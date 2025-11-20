@@ -7,8 +7,8 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 
 // middleware
-app.use(express());
 app.use(cors());
+app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.gkaujxr.mongodb.net/?appName=Cluster0`;
 
@@ -17,7 +17,7 @@ const client = new MongoClient(uri, {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
-    },
+    }
 });
 
 async function run() {
@@ -29,7 +29,14 @@ async function run() {
 
         // parcel related api
         app.get("/parcels", async (req, res) => {
-            //
+            const { email } = req.query;
+            const query = {};
+            if (email) {
+                query.senderEmail = email;
+            }
+            const cursor = parcelsCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
         });
 
         app.post("/parcels", async (req, res) => {
