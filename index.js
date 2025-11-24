@@ -5,6 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const dotenv = require("dotenv");
 dotenv.config();
 const port = process.env.PORT || 3000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 // middleware
 app.use(cors());
@@ -27,7 +28,7 @@ async function run() {
         const db = client.db("zapShiftDB");
         const parcelsCollection = db.collection("parcels");
 
-        // parcel related api
+        // parcel related api's
         app.get("/parcels", async (req, res) => {
             const { email } = req.query;
             const query = {};
@@ -59,6 +60,36 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const result = await parcelsCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // stripe payment related api's
+        app.post("/create-checkout-session", async (req, res) => {
+            const paymentInfo = req.body;
+            const amount = parseInt(paymentInfo.cost) * 100;
+
+            const session = await stripe.checkout.sessions.create({
+                line_items: [
+                    {
+                        price_data: {
+                            currency: "USD",
+                            product_data: {
+                                name: paymentInfo.parcelName,
+                            },
+                            unit_amount: amount,
+                        },
+                        quantity: 1,
+                    },
+                ],
+                customer_email: paymentInfo.senderEmail,
+                mode: "payment",
+                metadata: {
+                    parcelId: paymentInfo.parcelId,
+                },
+                success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+                cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+            });
+
+            res.send({ url: session.url });
         });
 
         // Send a ping to confirm a successful connection
