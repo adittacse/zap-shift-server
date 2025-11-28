@@ -7,6 +7,14 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 const crypto = require("crypto");
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
 
 const generateTrackingId = () => {
     const prefix = "PRCL";  // brand prefix
@@ -19,6 +27,26 @@ const generateTrackingId = () => {
 // middleware
 app.use(cors());
 app.use(express.json());
+
+const verifyFirebaseToken = async (req, res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).send({ message: "Unauthorized Access" });
+    }
+
+    const token = authorization.split(" ")[1];
+    if (!token) {
+        return res.status(401).send({ message: "Unauthorized Access" });
+    }
+
+    try {
+        const userInfo = await admin.auth().verifyIdToken(token);
+        req.token_email = userInfo.email;
+        next();
+    } catch {
+        return res.status(401).send({ message: "Unauthorized Access" });
+    }
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.gkaujxr.mongodb.net/?appName=Cluster0`;
 
@@ -159,11 +187,14 @@ async function run() {
         });
 
         // payment related api's
-        app.get("/payments", async (req, res) => {
+        app.get("/payments", verifyFirebaseToken, async (req, res) => {
             const email = req.query.email;
             const query = {};
             if (email) {
                 query.customerEmail = email;
+                if (email !== req.token_email) {
+                    return res.status(403).send({ message: "Forbidden Access" });
+                }
             }
             const cursor = paymentCollection.find(query);
             const result = await cursor.toArray();
