@@ -106,6 +106,19 @@ async function run() {
         app.patch("/payment-success", async (req, res) => {
             const sessionId = req.query.session_id;
             const session = await stripe.checkout.sessions.retrieve(sessionId);
+            
+            // stop double transaction
+            const transactionId = session.payment_intent;
+            const query = { transactionId: transactionId };
+            const paymentExist = await paymentCollection.findOne(query);
+            if (paymentExist) {
+                return res.send({ 
+                    message: "already exist", 
+                    transactionId,
+                    trackingId: paymentExist.trackingId
+                });
+            }
+
             const trackingId = generateTrackingId();
 
             if (session.payment_status === "paid") {
@@ -113,7 +126,7 @@ async function run() {
                 const query = { _id: new ObjectId(id) };
                 const update = {
                     $set: {
-                        paymentStatus: "Paid",
+                        paymentStatus: "paid",
                         trackingId: trackingId
                     }
                 };
@@ -128,7 +141,8 @@ async function run() {
                     parcelName: session.metadata.parcelName,
                     transactionId: session.payment_intent,
                     paymentStatus: session.payment_status,
-                    paidAt: new Date()
+                    paidAt: new Date(),
+                    trackingId: trackingId
                 }
 
                 if (session.payment_status === "paid") {
@@ -142,6 +156,18 @@ async function run() {
                 }
             }
             res.send({ success: false });
+        });
+
+        // payment related api's
+        app.get("/payments", async (req, res) => {
+            const email = req.query.email;
+            const query = {};
+            if (email) {
+                query.customerEmail = email;
+            }
+            const cursor = paymentCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
         });
 
         // Send a ping to confirm a successful connection
