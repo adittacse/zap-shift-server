@@ -245,6 +245,33 @@ async function run() {
             res.send(result);
         });
 
+        app.patch("/riders/:id", verifyFirebaseToken, async (req, res) => {
+            const status = req.body.status;
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: status
+                }
+            };
+            const options = {};
+            const result = await ridersCollection.updateOne(query, updatedDoc, options);
+
+            if (status === "approved") {
+                const email = req.body.email;
+                const userQuery = { email: email };
+                const updateUser = {
+                    $set: {
+                        role: "rider"
+                    }
+                };
+                const userOptions = {};
+                const userResult = await userCollection.updateOne(userQuery, updateUser, userOptions);
+            }
+
+            res.send(result);
+        });
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!",);
