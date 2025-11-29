@@ -66,6 +66,7 @@ async function run() {
         const userCollection = db.collection("users");
         const parcelsCollection = db.collection("parcels");
         const paymentCollection = db.collection("payments");
+        const ridersCollection = db.collection("riders");
 
         // user's related api's
         app.post("/users", async (req, res) => {
@@ -215,6 +216,32 @@ async function run() {
             }
             const cursor = paymentCollection.find(query).sort({ paidAt: -1 });
             const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        // rider's related api's
+        app.get("/riders", async (req, res) => {
+            const query = {};
+            if (req.query.status) {
+                query.status = req.query.status;
+            }
+            const cursor = ridersCollection.find(query).sort({ createdAt: -1 });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        app.post("/riders", async (req, res) => {
+            const rider = req.body;
+            rider.status = "pending";
+            rider.createdAt = new Date();
+
+            const riderEmail = rider.riderEmail;
+            const riderExist = await ridersCollection.findOne({ riderEmail });
+            if (riderExist) {
+                return res.send({ message: "already a rider" });
+            }
+
+            const result = await ridersCollection.insertOne(rider);
             res.send(result);
         });
 
