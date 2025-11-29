@@ -63,8 +63,25 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
         const db = client.db("zapShiftDB");
+        const userCollection = db.collection("users");
         const parcelsCollection = db.collection("parcels");
         const paymentCollection = db.collection("payments");
+
+        // user's related api's
+        app.post("/users", async (req, res) => {
+            const user = req.body;
+            user.role = "user";
+            user.createdAt = new Date();
+            
+            const email = user.email;
+            const userExists = await userCollection.findOne({ email });
+            if (userExists) {
+                return res.send({ message: "user exists" });
+            }
+
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        });
 
         // parcel related api's
         app.get("/parcels", async (req, res) => {
@@ -196,7 +213,7 @@ async function run() {
                     return res.status(403).send({ message: "Forbidden Access" });
                 }
             }
-            const cursor = paymentCollection.find(query);
+            const cursor = paymentCollection.find(query).sort({ paidAt: -1 });
             const result = await cursor.toArray();
             res.send(result);
         });
