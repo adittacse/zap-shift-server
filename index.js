@@ -69,6 +69,12 @@ async function run() {
         const ridersCollection = db.collection("riders");
 
         // user's related api's
+        app.get("/users", verifyFirebaseToken, async (req, res) => {
+            const cursor = userCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
         app.post("/users", async (req, res) => {
             const user = req.body;
             user.role = "user";
