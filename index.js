@@ -68,6 +68,18 @@ async function run() {
         const paymentCollection = db.collection("payments");
         const ridersCollection = db.collection("riders");
 
+        // admin middleware before allowing admin activity
+        // must be use after verifyFirebaseToken middleware
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.token_email;
+            const query = { email: email };
+            const result = await userCollection.findOne(query);
+            if (!result || result.role !== "admin") {
+                return res.status(403).send({ message: "Forbidden Access" });
+            }
+            next();
+        }
+
         // user's related api's
         app.get("/users", verifyFirebaseToken, async (req, res) => {
             const cursor = userCollection.find();
@@ -82,7 +94,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/users/:email/role", async (req, res) => {
+        app.get("/users/:email/role", verifyFirebaseToken, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const user = await userCollection.findOne(query);
@@ -104,7 +116,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch("/users/:id", async (req, res) => {
+        app.patch("/users/:id/role", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const roleInfo = req.body;
             const query = { _id: new ObjectId(id) };
@@ -279,7 +291,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch("/riders/:id", verifyFirebaseToken, async (req, res) => {
+        app.patch("/riders/:id", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const status = req.body.status;
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
