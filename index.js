@@ -85,8 +85,8 @@ async function run() {
         app.get("/users/:email/role", async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
-            const result = await userCollection.findOne(query);
-            res.send({ role: result?.role || "user" });
+            const user = await userCollection.findOne(query);
+            res.send({ role: user?.role || "user" });
         });
 
         app.post("/users", async (req, res) => {
