@@ -82,7 +82,15 @@ async function run() {
 
         // user's related api's
         app.get("/users", verifyFirebaseToken, async (req, res) => {
-            const cursor = userCollection.find();
+            const searchText = req.query.searchText;
+            const query = {};
+            if (searchText) {
+                query.$or = [
+                    { displayName: { $regex: searchText, $options: "i" } },
+                    { email: { $regex: searchText, $options: "i" } },
+                ]
+            }
+            const cursor = userCollection.find(query).sort({ displayName: 1 }).limit(5);
             const result = await cursor.toArray();
             res.send(result);
         });
