@@ -212,8 +212,8 @@ async function run() {
             const query = { transactionId: transactionId };
             const paymentExist = await paymentCollection.findOne(query);
             if (paymentExist) {
-                return res.send({ 
-                    message: "already exist", 
+                return res.send({
+                    message: "already exist",
                     transactionId,
                     trackingId: paymentExist.trackingId
                 });
@@ -227,6 +227,7 @@ async function run() {
                 const update = {
                     $set: {
                         paymentStatus: "paid",
+                        deliveryStatus: "pending-pickup",
                         trackingId: trackingId
                     }
                 };
@@ -245,17 +246,16 @@ async function run() {
                     trackingId: trackingId
                 }
 
-                if (session.payment_status === "paid") {
-                    const resultPayment = await paymentCollection.insertOne(payment);
-                    res.send({ success: true, 
-                        modifyParcel: result, 
-                        trackingId: trackingId,
-                        transactionId: session.payment_intent,
-                        paymentInfo: resultPayment 
-                    });
-                }
+                const resultPayment = await paymentCollection.insertOne(payment);
+                return res.send({ 
+                    success: true,
+                    modifyParcel: result,
+                    trackingId: trackingId,
+                    transactionId: transactionId,
+                    paymentInfo: resultPayment
+                });
             }
-            res.send({ success: false });
+            return res.send({ success: false });
         });
 
         // payment related api's
