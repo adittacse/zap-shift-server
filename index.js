@@ -79,6 +79,18 @@ async function run() {
             next();
         };
 
+        // rider middleware before allowing rider activity
+        // must be use after verifyFirebaseToken middleware
+        const verifyRider = async (req, res, next) => {
+            const email = req.token_email;
+            const query = { email: email };
+            const result = await userCollection.findOne(query);
+            if (!result || result.role !== "rider") {
+                return res.status(403).send({ message: "Forbidden Access" });
+            }
+            next();
+        };
+
         // user's related api's
         app.get("/users", verifyFirebaseToken, async (req, res) => {
             const searchText = req.query.searchText;
@@ -150,7 +162,7 @@ async function run() {
         );
 
         // parcel related api's
-        app.get("/parcels", async (req, res) => {
+        app.get("/parcels", verifyFirebaseToken, async (req, res) => {
             const { email, deliveryStatus } = req.query;
             const query = {};
             if (email) {
@@ -160,6 +172,21 @@ async function run() {
                 query.deliveryStatus = deliveryStatus;
             }
             const options = { sort: { createdAt: -1 } };
+            const cursor = parcelsCollection.find(query, options);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        app.get("/parcels/rider", verifyFirebaseToken, verifyRider, async (req, res) => {
+            const { riderEmail, deliveryStatus } = req.query;
+            const query = {};
+            if (riderEmail) {
+                query.riderEmail=riderEmail;
+            }
+            if (deliveryStatus) {
+                query.deliveryStatus = deliveryStatus;
+            }
+            const options = { sort: { createdAt: 1 } };
             const cursor = parcelsCollection.find(query, options);
             const result = await cursor.toArray();
             res.send(result);
@@ -197,7 +224,7 @@ async function run() {
             const riderQuery = { _id: new ObjectId(riderId) };
             const riderUpdate = {
                 $set: {
-                    workStatus: "in_deliver"
+                    workStatus: "in_delivery"
                 }
             };
             const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdate);
