@@ -179,6 +179,31 @@ async function run() {
             res.send(result);
         });
 
+        app.patch("/parcels/:id", async (req, res) => {
+            const { riderId, riderName, riderEmail } = req.body;
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const update = {
+                $set: {
+                    deliveryStatus: "driver_assigned",
+                    riderId: riderId,
+                    riderName: riderName,
+                    riderEmail: riderEmail
+                }
+            };
+            const result = await parcelsCollection.updateOne(query, update);
+            
+            // update rider information
+            const riderQuery = { _id: new ObjectId(riderId) };
+            const riderUpdate = {
+                $set: {
+                    workStatus: "in_deliver"
+                }
+            };
+            const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdate);
+            res.send(riderResult);
+        });
+
         app.delete("/parcels/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
@@ -337,11 +362,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch(
-            "/riders/:id",
-            verifyFirebaseToken,
-            verifyAdmin,
-            async (req, res) => {
+        app.patch("/riders/:id", verifyFirebaseToken, verifyAdmin, async (req, res) => {
                 const status = req.body.status;
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
