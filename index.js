@@ -96,7 +96,7 @@ async function run() {
             const log = {
                 trackingId,
                 status,
-                details: status.split("-").join(" "),
+                details: status.split("_").join(" "),
                 createdAt: new Date()
             };
 
@@ -215,7 +215,12 @@ async function run() {
 
         app.post("/parcels", async (req, res) => {
             const parcel = req.body;
+            const trackingId = generateTrackingId();
             parcel.createdAt = new Date();
+            parcel.trackingId = trackingId;
+
+            await logTracking(trackingId, "parcel_created");
+
             const result = await parcelsCollection.insertOne(parcel);
             res.send(result);
         });
@@ -334,7 +339,7 @@ async function run() {
                 const parcelUpdate = {
                     $set: {
                         paymentStatus: "paid",
-                        deliveryStatus: "pending-pickup",
+                        deliveryStatus: "parcel_paid",
                         trackingId: trackingId,
                     }
                 };
@@ -371,7 +376,7 @@ async function run() {
                 const existingPayment = await paymentCollection.findOne(paymentQuery);
 
                 if (newlyCreated) {
-                    await logTracking(trackingId, "pending-pickup");
+                    await logTracking(trackingId, "parcel_paid");
                 }
                 
                 return res.send({
@@ -482,11 +487,18 @@ async function run() {
             res.send(result);
         });
 
+        // trackings related api's
+        app.get("/tracking/:trackingId/logs", async (req, res) => {
+            const trackingId = req.params.trackingId;
+            const query = { trackingId: trackingId };
+            const cursor = trackingsCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
-        console.log(
-            "Pinged your deployment. You successfully connected to MongoDB!",
-        );
+        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
