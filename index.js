@@ -311,6 +311,7 @@ async function run() {
                 metadata: {
                     parcelId: paymentInfo.parcelId,
                     parcelName: paymentInfo.parcelName,
+                    trackingId: paymentInfo.trackingId
                 },
                 success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
@@ -331,7 +332,7 @@ async function run() {
             }
             
             const transactionId = session.payment_intent;
-            const trackingId = generateTrackingId();
+            const trackingId = session.metadata.trackingId;
 
             if (session.payment_status === "paid") {
                 const parcelId = session.metadata.parcelId;
@@ -340,15 +341,10 @@ async function run() {
                     $set: {
                         paymentStatus: "paid",
                         deliveryStatus: "parcel_paid",
-                        trackingId: trackingId,
                     }
                 };
                 const parcelOptions = {};
-                const parcelResult = await parcelsCollection.updateOne(
-                    parcelQuery,
-                    parcelUpdate,
-                    parcelOptions,
-                );
+                const parcelResult = await parcelsCollection.updateOne(parcelQuery, parcelUpdate, parcelOptions);
                 
                 const payment = {
                     amount: session.amount_total / 100,
@@ -454,11 +450,7 @@ async function run() {
                     },
                 };
                 const options = {};
-                const result = await ridersCollection.updateOne(
-                    query,
-                    updatedDoc,
-                    options,
-                );
+                const result = await ridersCollection.updateOne(query, updatedDoc, options);
 
                 if (status === "approved") {
                     const email = req.body.email;
@@ -511,7 +503,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(
-        `Zap Shift Server listening on ${process.env.PROTOCOL}://${process.env.HOST}:${process.env.PORT}`,
-    );
+    console.log(`Zap Shift Server listening on ${process.env.PROTOCOL}://${process.env.HOST}:${process.env.PORT}`);
 });
