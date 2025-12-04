@@ -221,7 +221,7 @@ async function run() {
         });
 
         app.patch("/parcels/:id", async (req, res) => {
-            const { riderId, riderName, riderEmail } = req.body;
+            const { riderId, riderName, riderEmail, trackingId } = req.body;
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const update = {
@@ -242,11 +242,14 @@ async function run() {
                 }
             };
             const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdate);
+
+            await logTracking(trackingId, "driver_assigned");
+
             res.send(riderResult);
         });
 
         app.patch("/parcels/:id/status", async (req, res) => {
-            const { deliveryStatus, riderId } = req.body;
+            const { deliveryStatus, riderId, trackingId } = req.body;
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const update = {
@@ -267,6 +270,9 @@ async function run() {
             }
 
             const result = await parcelsCollection.updateOne(query, update);
+
+            await logTracking(trackingId, deliveryStatus);
+
             res.send(result);
         });
 
