@@ -138,11 +138,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch(
-            "/users/:id/role",
-            verifyFirebaseToken,
-            verifyAdmin,
-            async (req, res) => {
+        app.patch("/users/:id/role", verifyFirebaseToken, verifyAdmin, async (req, res) => {
                 const id = req.params.id;
                 const roleInfo = req.body;
                 const query = { _id: new ObjectId(id) };
@@ -183,7 +179,12 @@ async function run() {
             if (riderEmail) {
                 query.riderEmail=riderEmail;
             }
-            if (deliveryStatus) {
+            if (deliveryStatus !== "parcel_delivered") {
+                query.deliveryStatus = { 
+                    // $in: ["driver_assigned", "rider_arriving"]
+                    $nin: ["parcel_delivered"]
+                };
+            } else {
                 query.deliveryStatus = deliveryStatus;
             }
             const options = { sort: { createdAt: 1 } };
@@ -229,6 +230,31 @@ async function run() {
             };
             const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdate);
             res.send(riderResult);
+        });
+
+        app.patch("/parcels/:id/status", async (req, res) => {
+            const { deliveryStatus, riderId } = req.body;
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const update = {
+                $set: {
+                    deliveryStatus: deliveryStatus
+                }
+            };
+
+            if (deliveryStatus === "parcel_delivered") {
+                // update rider information
+                const riderQuery = { _id: new ObjectId(riderId) };
+                const riderUpdate = {
+                    $set: {
+                        workStatus: "available"
+                    }
+                };
+                const riderResult = await ridersCollection.updateOne(riderQuery, riderUpdate);
+            }
+
+            const result = await parcelsCollection.updateOne(query, update);
+            res.send(result);
         });
 
         app.delete("/parcels/:id", async (req, res) => {
