@@ -66,6 +66,7 @@ async function run() {
         const parcelsCollection = db.collection("parcels");
         const paymentCollection = db.collection("payments");
         const ridersCollection = db.collection("riders");
+        const trackingsCollection = db.collection("trackings");
 
         // admin middleware before allowing admin activity
         // must be use after verifyFirebaseToken middleware
@@ -90,6 +91,18 @@ async function run() {
             }
             next();
         };
+
+        const logTracking = async (trackingId, status) => {
+            const log = {
+                trackingId,
+                status,
+                details: status.split("-").join(" "),
+                createdAt: new Date()
+            };
+
+            const result = await trackingsCollection.insertOne(log);
+            return result;
+        }
 
         // user's related api's
         app.get("/users", verifyFirebaseToken, async (req, res) => {
@@ -350,6 +363,10 @@ async function run() {
                     transactionId: transactionId
                 }
                 const existingPayment = await paymentCollection.findOne(paymentQuery);
+
+                if (newlyCreated) {
+                    await logTracking(trackingId, "pending-pickup");
+                }
                 
                 return res.send({
                     success: true,
