@@ -206,14 +206,14 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/parcels/:id", async (req, res) => {
+        app.get("/parcels/:id", verifyFirebaseToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await parcelsCollection.findOne(query);
             res.send(result);
         });
 
-        app.get("/parcels/delivery-status/stats", async (req, res) => {
+        app.get("/parcels/delivery-status/stats", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const pipeline = [
                 { 
                     $group: {
@@ -302,7 +302,7 @@ async function run() {
             res.send(result);
         });
 
-        app.delete("/parcels/:id", async (req, res) => {
+        app.delete("/parcels/:id", verifyFirebaseToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await parcelsCollection.deleteOne(query);
@@ -428,7 +428,7 @@ async function run() {
         });
 
         // rider's related api's
-        app.get("/riders", async (req, res) => {
+        app.get("/riders", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const { status, district, workStatus } = req.query;
             const query = {};
             if (status) {
@@ -445,7 +445,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/rider/delivery-per-day", async (req, res) => {
+        app.get("/rider/delivery-per-day", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const email = req.query.email;
             const pipeline = [
                 {
@@ -542,7 +542,7 @@ async function run() {
             },
         );
 
-        app.delete("/riders/:id", async (req, res) => {
+        app.delete("/riders/:id", verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await ridersCollection.deleteOne(query);
