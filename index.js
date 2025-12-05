@@ -238,6 +238,7 @@ async function run() {
             const trackingId = generateTrackingId();
             parcel.createdAt = new Date();
             parcel.trackingId = trackingId;
+            parcel.deliveryStatus = "parcel_created";
 
             await logTracking(trackingId, "parcel_created");
 
@@ -440,6 +441,55 @@ async function run() {
                 query.workStatus = workStatus;
             }
             const cursor = ridersCollection.find(query).sort({ createdAt: -1 });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+        app.get("/rider/delivery-per-day", async (req, res) => {
+            const email = req.query.email;
+            const pipeline = [
+                {
+                    $match: {
+                        riderEmail: email,
+                        deliveryStatus: "parcel_delivered"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "trackings",
+                        localField: "trackingId",
+                        foreignField: "trackingId",
+                        as: "parcel_tracking"
+                    }
+                },
+                {
+                    $unwind: "$parcel_tracking"
+                },
+                {
+                    $match: {
+                        "parcel_tracking.status": "parcel_delivered"
+                    }
+                },
+                {
+                    $addFields: {
+                        deliveryDay: {
+                            $dateToString: {
+                                format: "%d-%m-%Y",
+                                date: "$parcel_tracking.createdAt"
+                            }
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$deliveryDay",
+                        deliveredCount: {
+                            $sum: 1
+                        }
+                    }
+                }
+            ];
+            const cursor = parcelsCollection.aggregate(pipeline);
             const result = await cursor.toArray();
             res.send(result);
         });
